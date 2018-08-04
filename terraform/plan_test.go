@@ -2,63 +2,11 @@ package terraform
 
 import (
 	"bytes"
-	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/terraform/addrs"
-
-	"github.com/hashicorp/terraform/configs"
 	"github.com/zclconf/go-cty/cty"
 )
-
-func TestPlanContextOpts(t *testing.T) {
-	plan := &Plan{
-		Diff: &Diff{
-			Modules: []*ModuleDiff{
-				{
-					Path: []string{"test"},
-				},
-			},
-		},
-		Config: configs.NewEmptyConfig(),
-		State: &State{
-			TFVersion: "sigil",
-		},
-		Vars:    map[string]cty.Value{"foo": cty.StringVal("bar")},
-		Targets: []string{"baz.bar"},
-
-		TerraformVersion: VersionString(),
-		ProviderSHA256s: map[string][]byte{
-			"test": []byte("placeholder"),
-		},
-	}
-
-	got, err := plan.contextOpts(&ContextOpts{})
-	if err != nil {
-		t.Fatalf("error creating context: %s", err)
-	}
-
-	want := &ContextOpts{
-		Diff:   plan.Diff,
-		Config: plan.Config,
-		State:  plan.State,
-		Variables: InputValues{
-			"foo": &InputValue{
-				Value:      cty.StringVal("bar"),
-				SourceType: ValueFromPlan,
-			},
-		},
-		Targets: []addrs.Targetable{
-			addrs.RootModuleInstance.Resource(addrs.ManagedResourceMode, "baz", "bar"),
-		},
-		ProviderSHA256s: plan.ProviderSHA256s,
-	}
-
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("wrong result\ngot:  %#v\nwant %#v", got, want)
-	}
-}
 
 func TestReadWritePlan(t *testing.T) {
 	plan := &Plan{
@@ -126,61 +74,5 @@ func TestReadWritePlan(t *testing.T) {
 	expectedStr := strings.TrimSpace(plan.String())
 	if actualStr != expectedStr {
 		t.Fatalf("bad:\n\n%s\n\nexpected:\n\n%s", actualStr, expectedStr)
-	}
-}
-
-func TestPlanContextOptsOverrideStateGood(t *testing.T) {
-	plan := &Plan{
-		Diff: &Diff{
-			Modules: []*ModuleDiff{
-				{
-					Path: []string{"test"},
-				},
-			},
-		},
-		Config: configs.NewEmptyConfig(),
-		State: &State{
-			TFVersion: "sigil",
-			Serial:    1,
-		},
-		Vars:    map[string]cty.Value{"foo": cty.StringVal("bar")},
-		Targets: []string{"baz.bar"},
-
-		TerraformVersion: VersionString(),
-		ProviderSHA256s: map[string][]byte{
-			"test": []byte("placeholder"),
-		},
-	}
-
-	base := &ContextOpts{
-		State: &State{
-			TFVersion: "sigil",
-			Serial:    2,
-		},
-	}
-
-	got, err := plan.contextOpts(base)
-	if err != nil {
-		t.Fatalf("error creating context: %s", err)
-	}
-
-	want := &ContextOpts{
-		Diff:   plan.Diff,
-		Config: plan.Config,
-		State:  base.State,
-		Variables: InputValues{
-			"foo": &InputValue{
-				Value:      cty.StringVal("bar"),
-				SourceType: ValueFromPlan,
-			},
-		},
-		Targets: []addrs.Targetable{
-			addrs.RootModuleInstance.Resource(addrs.ManagedResourceMode, "baz", "bar"),
-		},
-		ProviderSHA256s: plan.ProviderSHA256s,
-	}
-
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("wrong result\ngot:  %#v\nwant %#v", got, want)
 	}
 }
